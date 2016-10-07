@@ -1,0 +1,23 @@
+local r = rednet.run
+function rednet.run()
+	rednet.run = r
+	error("",0)
+end
+
+local p = printError
+function _G.printError()
+	_G.printError = p
+	if fs.exists '/boot/startup.lua' then
+		local ok, err = loadfile('/boot/startup.lua')
+		if not ok then
+			print(err)
+			if fs.exists '/boot/recovery.lua' then
+				assert(loadfile('/boot/recovery.lua'))()
+			end
+		else
+			return ok()
+		end
+	end
+end
+
+-- vim: ft=lua noet
