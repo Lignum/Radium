@@ -1,0 +1,5 @@
+task run(type: JavaExec) {
+    classpath = files 'bin/ccemux.jar'
+    main = 'net.clgd.ccemux.Launcher'
+    args = ['-l', 'trace', '-s', 'src']
+}
