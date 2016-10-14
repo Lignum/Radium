@@ -1,23 +1,67 @@
-local r = rednet.run
-function rednet.run()
-	rednet.run = r
-	error("",0)
+-- /startup
+-- Simple loader for Radium with a built-in TLCO
+
+_ENV.sysRoot = "sys"
+
+function _ENV.sysPath(subpath)
+	if subpath then
+		return fs.combine(sysRoot, subpath)
+	else
+		return sysRoot
+	end
 end
 
-local p = printError
-function _G.printError()
-	_G.printError = p
-	if fs.exists '/boot/startup.lua' then
-		local ok, err = loadfile('/boot/startup.lua')
+local function loadfile(p, m, e)
+	local f = fs.open(p, "r")
+	local d = f.readAll()
+	f.close()
+
+	return load(d, fs.getName(p), m, e)
+end
+
+local function recovery(e)
+	local r, e2 = loadfile(sysPath("recovery.lua"), nil, _ENV)
+	if not r then
+		printError("An error occured while trying to handle the previous error")
+		printError(e)
+		printError(e2)
+		print("Shutting down in 10 seconds")
+		sleep(10)
+		os.shutdown()
+	else
+		local ok, e2 = pcall(r, e)
 		if not ok then
-			print(err)
-			if fs.exists '/boot/recovery.lua' then
-				assert(loadfile('/boot/recovery.lua'))()
-			end
+			printError("An error occured while trying to handle the previous error")
+			printError(e)
+			printError(e2)
+			print("Shutting down in 10 seconds")
+			sleep(10)
+			os.shutdown()
 		else
-			return ok()
+			os.shutdown()
 		end
 	end
 end
 
--- vim: ft=lua noet
+local function boot()
+	local f, e = loadfile(sysPath("boot.lua"), nil, _ENV)
+	if not f then
+		recovery(e)
+	else
+		local ok, e = pcall(f)
+		if not ok then
+			recovery(e)
+		else
+			os.shutdown()
+		end
+	end
+end
+
+local pe = printError
+function _G.printError()
+	_G.printError = pe
+
+	boot()
+end
+
+os.queueEvent("terminate")
